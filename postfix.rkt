@@ -125,23 +125,19 @@
           (new-cmds (append (reverse (car stack)) upcoming-cmds)))
       (values new-stack new-cmds)))
   
-  (cond
-    [(eq? token 'add) (binop +)]
-    [(eq? token 'div) (binop quotient)] ; TODO: check semantics
-    [(eq? token 'mul) (binop *)]
-    [(eq? token 'rem) (binop remainder)] ; TODO: check semantics
-    [(eq? token 'sub) (binop -)]
-    
-    [(eq? token 'eq) (logical-binop =)]
-    [(eq? token 'gt) (logical-binop >)]
-    [(eq? token 'lt) (logical-binop <)]
-
-    [(eq? token 'pop) (handle-pop)]
-    [(eq? token 'swap) (handle-swap)]
-    [(eq? token 'sel) (handle-sel)]
-    [(eq? token 'nget) (handle-nget)]
-    [(eq? token 'exec) (handle-exec)]
-    
-    [else (error "unrecognized special token")]))
+  (case token
+    ['add (binop +)]
+    ['div (binop quotient)] ; TODO: check semantics
+    ['mul (binop *)]
+    ['rem (binop remainder)] ; TODO: check semantics
+    ['sub (binop -)]
+    ['eq (logical-binop =)]
+    ['gt (logical-binop >)]
+    ['lt (logical-binop <)]
+    ['pop (handle-pop)]
+    ['swap (handle-swap)]
+    ['sel (handle-sel)]
+    ['nget (handle-nget)]
+    ['exec (handle-exec)]))
 
 (provide run-postfix)
