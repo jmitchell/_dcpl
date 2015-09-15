@@ -74,7 +74,7 @@
            (new-stack (cons (op v2 v1) (cddr stack))))
       (values new-stack upcoming-cmds)))
   
-  (define (logical-binop op)
+  (define (relational-binop op)
     (binop (lambda (v2 v1)
              (if (op v2 v1) 1 0))))
 
@@ -131,9 +131,9 @@
     ['mul (binop *)]
     ['rem (binop remainder)] ; TODO: check semantics
     ['sub (binop -)]
-    ['eq (logical-binop =)]
-    ['gt (logical-binop >)]
-    ['lt (logical-binop <)]
+    ['eq (relational-binop =)]
+    ['gt (relational-binop >)]
+    ['lt (relational-binop <)]
     ['pop (handle-pop)]
     ['swap (handle-swap)]
     ['sel (handle-sel)]
