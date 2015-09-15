@@ -7,7 +7,7 @@
   (pair? (member x postfix-special-tokens)))
 
 (define (postfix-executable-sequence? x)
-  (and (pair? x)
+  (and (list? x)
        (empty? (filter-not postfix-command? x))))
 
 (define (postfix-command? x)
@@ -45,13 +45,13 @@
         (error "invalid program")
         (let ((argc (cadr program))
               (commands (cddr program)))
-          (if (> argc (length stack))
+          (if (not (= argc (length stack)))
               (error "not enough input arguments on the stack")
               (postfix-eval commands stack))))))
 
 (define (handle-final-stack stack)
-  (if (not (or (pair? stack)
-               (integer? (car stack))))
+  (if (not (and (pair? stack)
+                (integer? (car stack))))
       (error "invalid final stack")
       (car stack)))
 
@@ -122,7 +122,7 @@
 
   (define (handle-exec)
     (let ((new-stack (cdr stack))
-          (new-cmds (append (reverse (car stack)) upcoming-cmds)))
+          (new-cmds (append (car stack) upcoming-cmds)))
       (values new-stack new-cmds)))
   
   (case token
