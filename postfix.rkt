@@ -1,10 +1,9 @@
 #lang racket
 
-(define postfix-special-tokens
-  '(add div eq exec gt lt mul nget pop rem sel sub swap))
+(define special-token-dictionary (make-hash))
 
 (define (postfix-special-token? x)
-  (pair? (member x postfix-special-tokens)))
+  (hash-has-key? special-token-dictionary x))
 
 (define (postfix-executable-sequence? x)
   (and (list? x)
@@ -68,31 +67,31 @@
      (error "invalid command")]))
 
 (define (handle-special-token token upcoming-cmds stack)
-  (define (binop op)
-    (let* ((v1 (car stack))
-           (v2 (cadr stack))
-           (new-stack (cons (op v2 v1) (cddr stack))))
-      (values new-stack upcoming-cmds)))
-  
-  (define (relational-binop op)
-    (binop (lambda (v2 v1)
-             (if (op v2 v1) 1 0))))
+  (let ((handler (hash-ref special-token-dictionary token)))
+    (handler upcoming-cmds stack)))
 
-  (define (handle-pop)
+(define (def-token token handler)
+  ;; TODO: for now, prevent overriding existing tokens
+  (hash-set! special-token-dictionary token handler))
+
+(def-token 'pop
+  (lambda (upcoming-cmds stack)
     (if (empty? stack)
         (error "failed to pop: stack already empty")
-        (values (cdr stack) upcoming-cmds)))
+        (values (cdr stack) upcoming-cmds))))
 
-  (define (handle-swap)
+(def-token 'swap
+  (lambda (upcoming-cmds stack)
     (if (not (and (pair? stack)
                   (pair? (cdr stack))))
         (error "failed to swap: stack has fewer than two elements")
         (values (cons (cadr stack)
                       (cons (car stack)
                             (cddr stack)))
-                upcoming-cmds)))
+                upcoming-cmds))))
 
-  (define (handle-sel)
+(def-token 'sel
+  (lambda (upcoming-cmds stack)
     (if (not (and (pair? stack)
                   (pair? (cdr stack))
                   (pair? (cddr stack))))
@@ -104,9 +103,10 @@
               (error "failed to sel: 3rd element isn't an integer")
               (values (cons (if (= v3 0) v1 v2)
                             (cdddr stack))
-                      upcoming-cmds)))))
-  
-  (define (handle-nget)
+                      upcoming-cmds))))))
+
+(def-token 'nget
+  (lambda (upcoming-cmds stack)
     (if (not (pair? stack))
         (error "failed to nget: stack is empty")
         (let ((v-index (car stack)))
@@ -118,26 +118,36 @@
                 (if (not (integer? v))
                     (error "failed to nget: indexed value is not an integer")
                     (values (cons v (cdr stack))
-                            upcoming-cmds)))))))
+                            upcoming-cmds))))))))
 
-  (define (handle-exec)
+(def-token 'exec
+  (lambda (upcoming-cmds stack)
     (let ((new-stack (cdr stack))
           (new-cmds (append (car stack) upcoming-cmds)))
-      (values new-stack new-cmds)))
-  
-  (case token
-    ['add (binop +)]
-    ['div (binop quotient)] ; TODO: check semantics
-    ['mul (binop *)]
-    ['rem (binop remainder)] ; TODO: check semantics
-    ['sub (binop -)]
-    ['eq (relational-binop =)]
-    ['gt (relational-binop >)]
-    ['lt (relational-binop <)]
-    ['pop (handle-pop)]
-    ['swap (handle-swap)]
-    ['sel (handle-sel)]
-    ['nget (handle-nget)]
-    ['exec (handle-exec)]))
+      (values new-stack new-cmds))))
+
+(define (def-binop-token token op)
+  (def-token token
+    (lambda (upcoming-cmds stack)
+      (let* ((v1 (car stack))
+             (v2 (cadr stack))
+             (new-stack (cons (op v2 v1) (cddr stack))))
+        (values new-stack upcoming-cmds)))))
+
+(def-binop-token 'add +)
+(def-binop-token 'div quotient)
+(def-binop-token 'mul *)
+(def-binop-token 'rem remainder)
+(def-binop-token 'sub -)
+
+(define (def-relational-token token op)
+  (def-binop-token token
+    (lambda (v2 v1)
+      (if (op v2 v1) 1 0))))
+
+(def-relational-token 'eq =)
+(def-relational-token 'gt >)
+(def-relational-token 'lt <)
 
 (provide run-postfix)
+(provide def-token)
