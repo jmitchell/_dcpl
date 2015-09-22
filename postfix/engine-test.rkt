@@ -1,7 +1,7 @@
 #lang racket
 
 (require rackunit
-         "postfix.rkt")
+         "engine.rkt")
 
 (check-equal? (run-postfix '(postfix 0 1 2 3))
               3)

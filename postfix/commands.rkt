@@ -2,76 +2,8 @@
 
 (define special-token-dictionary (make-hash))
 
-(define (postfix-special-token? x)
-  (hash-has-key? special-token-dictionary x))
-
-(define (postfix-executable-sequence? x)
-  (and (list? x)
-       (empty? (filter-not postfix-command? x))))
-
-(define (postfix-command? x)
-  (or (integer? x)
-      (postfix-special-token? x)
-      (postfix-executable-sequence? x)))
-
-(define (postfix-program? x)
-  (let ((postfix (car x))
-        (argc (cadr x))
-        (commands (cddr x)))
-    (and
-     (eq? postfix 'postfix)
-     (integer? argc)
-     (not (negative? argc))
-     (postfix-command? commands))))
-
-; TODO: whenever values are cons-ed onto the stack ensure type invariant holds
-(define (postfix-stack-value? x)
-  (or (integer? x)
-      (postfix-executable-sequence? x)))
-
-(define (postfix-eval commands stack)
-  (cond
-    [(empty? commands)
-     (handle-final-stack stack)]
-    [(postfix-command? (car commands))     
-     (handle-command (car commands) (cdr commands) stack)]
-    [else
-     (error "invalid command")]))
-
-(define run-postfix
-  (lambda (program . stack)
-    (if (not (postfix-program? program))
-        (error "invalid program")
-        (let ((argc (cadr program))
-              (commands (cddr program)))
-          (if (not (= argc (length stack)))
-              (error "not enough input arguments on the stack")
-              (postfix-eval commands stack))))))
-
-(define (handle-final-stack stack)
-  (if (not (and (pair? stack)
-                (integer? (car stack))))
-      (error "invalid final stack")
-      (car stack)))
-
-(define (handle-command x upcoming-cmds stack)
-  (cond
-    [(or (integer? x)
-         (postfix-executable-sequence? x))
-     (postfix-eval upcoming-cmds (cons x stack))]
-    [(postfix-special-token? x)
-     (define-values
-       (new-stack new-upcoming-cmds) (handle-special-token x upcoming-cmds stack))
-     (postfix-eval new-upcoming-cmds new-stack)]
-    [else
-     (error "invalid command")]))
-
-(define (handle-special-token token upcoming-cmds stack)
-  (let ((handler (hash-ref special-token-dictionary token)))
-    (handler upcoming-cmds stack)))
-
 (define (def-token token handler)
-  ;; TODO: for now, prevent overriding existing tokens
+  ;; TODO: prevent overriding existing tokens
   (hash-set! special-token-dictionary token handler))
 
 (def-token 'pop
@@ -149,5 +81,19 @@
 (def-relational-token 'gt >)
 (def-relational-token 'lt <)
 
-(provide run-postfix)
-(provide def-token)
+;; TODO: reintegrate dup and its tests as an optional plugin.
+;(def-token 'dup
+;  (lambda (upcoming-commands stack)
+;    (values (cons (car stack) stack)
+;            upcoming-commands)))
+;
+;(check-equal? (run-postfix '(postfix 0 3 dup add))
+;              6)
+;(check-equal? (run-postfix '(postfix 1 (dup mul) exec)
+;                           12)
+;              144)
+;(check-equal? (run-postfix '(postfix 2 (dup mul) dup 3 nget swap exec swap 4 nget swap exec add)
+;                           5 12)
+;              169)
+
+(provide special-token-dictionary)
