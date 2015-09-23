@@ -1,0 +1,64 @@
+#+TITLE: PostFix Design Strategy
+#+AUTHOR: Jacob Mitchell
+
+* Managing Supported Commands
+DCPL prescribes a small set of built-in commands, but also offers
+several additional commands for experimentation. Unless these
+experimental commands are carefully managed, clients may assume
+they're just part of the core built-in commands. Then, if the set of
+experimental commands or their behaviors changes, client code would be
+affected and the language would be deemed unstable.
+
+No commands for creating new commands have been introduced yet, so at
+this point commands are only introduced by modifying the PostFix
+source itself. If/when that changes, the problem will be even more
+complex. For instance, a PostFix file developed when PostFix didn't
+include X as a command might define X, but if PostFix later makes a
+"standard" definition for X the client either misses out on the
+standard definition or the client's definition is overridden by the
+built-in.
+
+** Goals
+1. Maintain a permanently fixed set of core built-in commands. Any
+   source developed using only these commands should always have the
+   same semantics.
+2. Provide a plugin architecture for adding new commands to the
+   language itself.
+  - To keep things simple, each plugin provides exactly one new
+    command. A plugin bundling mechanism could always be added later
+    if it were ever necessary.
+  - To keep the plugins themselves stable, there must be a standard
+    interface for a plugin, the command identifier it provides, and
+    that command's implementation.
+  - To avoid command identifier collisions, maintain a centralized
+    registry of plugin commands.
+  - To avoid a plugin's modifications adversely affecting consumers,
+    every plugin's identifier must reference a permanently fixed
+    implementation. Note the distinction between plugin identifier and
+    command identifier. If the command's behavior ever needs to be
+    patched, the command identifier would remain fixed, but would
+    produce a new plugin identifier.
+  - To actually use a plugin, a consumer needs a way to specify a set
+    of plugin identifiers as dependencies. This specification should
+    be discoverable from any source file where the plugin commands are
+    used, whether it's in the same file or there's a reference to an
+    external dependency spec file.
+  - To encourage plugins and consumer code evolving in stride,
+    consumers need an easy workflow to learn about updates to the
+    plugins they depend on, reviewing and testing them, and updating
+    the plugin identifiers in their dependency specs.
+** Open Questions
+1. Can plugin commands depend on other commands, either built-in or
+   from other plugins, or is the command implementation language
+   always operating at a different level?
+   - If plugins can depend on commands provided by other plugins, then
+     plugin maintainers must be considered whenever we discuss
+     "consumers" or "clients".
+** Observations
+The goals for the plugin architecture closely resemble those of
+software package managers. For example, the requirement that a plugin
+identifier references a permanently fixed implementation seems similar
+to [[https://nixos.org/nix/][Nix]] and [[http://www.gnu.org/software/guix/][Guix]].
+
+Investigate what semantic specifications exist for package managers,
+how they differ, and why.
