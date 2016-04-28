@@ -1,11 +1,10 @@
-Require Import Coq.Numbers.BinNums.
+Require Import Coq.Numbers.Integer.BigZ.BigZ.
 Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-
+Import ListNotations.
 
 Module TerseAbstractSyntax.     (* Based on Fig 2.12 *)
   Inductive intLit : Type :=
-  | Number : BinNums.Z -> intLit.
+  | Number : bigZ -> intLit.
 
   Inductive arithmeticOperator : Type :=
   | Add | Sub | Mul | Div | Rem.
@@ -27,8 +26,8 @@ Module TerseAbstractSyntax.     (* Based on Fig 2.12 *)
   | Execute
   | ExecutableSequence : commandSeq -> command.
 
-  Inductive prog : intLit -> Type :=
-  | Postfix : forall (numArgs : intLit), commandSeq -> prog numArgs.
+  Inductive prog : Type :=
+  | Postfix : intLit -> commandSeq -> prog.
 End TerseAbstractSyntax.
 
 Import TerseAbstractSyntax.
@@ -43,19 +42,17 @@ Module Semantics.
 
       Definition stack : Type := list value.
 
-      Definition literalOnTop (s : stack) : Prop :=
-        match s with
-          | List.nil => False
-          | h :: _ => match h with
-                       | IntLit _ => True
-                       | _ => False
-                     end
-        end.
+      Definition v (n : bigZ) : value := IntLit (Number n).
 
       Inductive finalStack : stack -> Type :=
-      | FinalStack : forall (s : stack) {pf : literalOnTop s}, finalStack s.
+      | FinalStack : forall (s : stack)
+                       {p1 : length s > 1}
+                       {p2 : exists n, nth 0 s (v BigZ.zero) = v n},
+                       finalStack s.
 
-      Definition inputs : nat -> Type := Vector.t intLit.
+      Check FinalStack [v BigZ.zero].
+
+      Definition inputs : Type := list intLit.
 
       Definition ansExp : Type := intLit.
     End Domains.
@@ -72,7 +69,7 @@ Module Semantics.
          - 'normal form'
        *)
       Inductive configuration : commandSeq -> stack -> Type :=
-      | CF : forall (cs : commandSeq) (st : stack), configuration cs st.
+      | CF : forall (c : commandSeq) (s : stack), configuration c s.
 
       (* TODO: => : see sec 3.2.3 *)
       (* Properties applicable to transition relations:
@@ -80,27 +77,18 @@ Module Semantics.
          - 'deterministic' vs 'nondeterministic'
        *)
 
-
       Inductive finalConfiguration : Type :=
-      | FC : forall {cs : commandSeq} {st : stack}
-               (cf : configuration cs st) {fs : finalStack st},
+      | FC : forall {s : stack} {fs : finalStack s}
+               (cf : configuration (CommandSequence []) s),
                finalConfiguration.
 
+      Check FC (CF (CommandSequence [])
+                   [v BigZ.zero]).
+      Check FC (CF (CommandSequence [])
+                   []).         (* TODO: prove this is impossible. *)
+
+
       (* TODO: [inputFunction] and [outputFunction] *)
-
-      (* Which is better for [inputFunction]?
-
-           - Use types to disallow unproductive input configurations
-           - Allow them, following the book and create a safe interface later
-       *)
-      (* Fixpoint inputFunction {n : nat} (p : prog (toIntLit n)) (args : inputs n) : configuration _ _ := *)
-      (*   match p with *)
-      (*       Postfix _ cmds => match n with *)
-      (*                            Number n' => if length args = n' *)
-      (*                                        then CF cmds args *)
-      (*                                        else CF nil nil *)
-      (*                        end *)
-      (*   end. *)
 
     End SOS.
   End SmallStep.
